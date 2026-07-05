@@ -1,0 +1,44 @@
+[project]
+name = "galaxian-starfield-starter-kit"
+version = "0.1.0"
+description = "A drop-in, arcade-style starfield for pygame-ce — any size, any scroll direction, twinkle, parallax — plus complete sample games and a beginner tutorial."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pygame-ce>=2.5.7",
+]
+
+[project.scripts]
+starfield-demo = "starfield_kit.demo:main"
+galaxians = "starfield_kit.galaxians.main:main"
+defender = "starfield_kit.defender.main:main"
+invaders = "starfield_kit.invaders.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/starfield_kit"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, UP pyupgrade, B bugbear, SIM simplify
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.20",
+    "ty>=0.0.56",
+]
