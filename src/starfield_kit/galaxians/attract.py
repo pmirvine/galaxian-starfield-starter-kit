@@ -19,7 +19,9 @@ generic library dialed to the original's real numbers:
 * **Color** — the default "galaxian" palette *is* the board's DAC output.
 
 (For the cycle-exact emulation of the star circuit itself, see the
-companion repo: https://github.com/pmirvine/galaxian-starfield)
+companion repo: https://github.com/pmirvine/galaxian-starfield — and
+``docs/arcade-accurate.md`` is a step-by-step guide to swapping it into
+this very file. Three small edits and the model becomes the machine.)
 
 This file is also a deliberately clean starting point for your own game:
 everything on screen is already drawn at arcade proportions, so wiring in

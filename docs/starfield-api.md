@@ -175,7 +175,9 @@ short non-interactive tableau that exists precisely to show that setup
 (and makes a clean skeleton for a game of your own). For the cycle-exact
 1979 hardware simulation — the actual shift-register star generator — see
 the companion repo
-[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield).
+[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield);
+[arcade-accurate.md](arcade-accurate.md) shows, step by step, how to swap
+that real circuit into `galaxians-demo`.
 
 ### 3. Horizontal scroller where the player accelerates
 

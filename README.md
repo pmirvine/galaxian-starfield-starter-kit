@@ -130,7 +130,11 @@ If you want the cycle-exact hardware simulation of that board — the
 actual 17-bit LFSR star generator, half-pixel stars and all — that lives
 in the companion repo
 **[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield)**.
-This kit is the friendly, flexible cousin: same soul, any game.
+This kit is the friendly, flexible cousin: same soul, any game. And the
+two meet: **[docs/arcade-accurate.md](docs/arcade-accurate.md)** is a
+step-by-step guide to swapping the real circuit into `galaxians-demo` —
+one download, three edits, and the tableau runs on the true 1979 star
+generator.
 
 ## Develop
 

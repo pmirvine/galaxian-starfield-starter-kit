@@ -36,3 +36,5 @@ so the project virtualenv is always used — never invoke a bare `python`/`pip`.
 `docs/tutorial.md` is a from-scratch beginner walkthrough that must stay in
 sync with `src/starfield_kit/invaders/` — if you change one, change the other.
 `docs/starfield-api.md` documents every `Starfield` parameter.
+`docs/arcade-accurate.md` is an upgrade guide whose before/after snippets
+quote `src/starfield_kit/galaxians/attract.py` — keep them in sync too.
