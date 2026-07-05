@@ -73,6 +73,12 @@ pygame.quit()
 [`src/starfield_kit/starfield.py`](src/starfield_kit/starfield.py) —
 it is self-contained (stdlib + pygame-ce only) on purpose.
 
+> **Starting a brand-new game from zero?** The
+> [pygame-ce-starter](https://github.com/pmirvine/pygame-ce-starter) kit
+> scaffolds a complete pygame-ce project — Python, dependencies, linting,
+> and headless tests — with one command (this kit was built on it).
+> Scaffold your game there, then drop `starfield.py` in as above.
+
 Every use case is one constructor call:
 
 ```python

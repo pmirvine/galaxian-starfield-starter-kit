@@ -418,3 +418,9 @@ Some things worth noticing about what you built:
   `src/starfield_kit/starfield.py` into any pygame-ce project — it is
   self-contained on purpose. The pixel-art and sound helpers are nearly as
   small if you want them too.
+* **Start a fresh project from zero.** When you want your own game in its
+  own repo (not `mygame.py` inside this one), the
+  [pygame-ce-starter](https://github.com/pmirvine/pygame-ce-starter) kit
+  scaffolds a complete pygame-ce project — Python, dependencies, linting,
+  and headless tests — with one command. Scaffold it, then drop
+  `starfield.py` in and you are exactly where Step 2 started.
