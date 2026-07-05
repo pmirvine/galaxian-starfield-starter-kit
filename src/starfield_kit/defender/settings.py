@@ -19,6 +19,7 @@ WORLD_W = WINDOW_W * 4  # four screens of wrapping world
 # the game pushes it around with field.scroll() as the camera travels.
 STAR_LAYERS = 3
 STAR_DENSITY = 1.1
+STAR_SIZE = PIXEL_SCALE  # nearest stars one retro-pixel big; far layers shrink
 STAR_SEED = 1981  # the year Defender conquered the arcades
 
 # --- the ship ------------------------------------------------------------------

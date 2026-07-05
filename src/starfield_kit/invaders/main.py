@@ -72,8 +72,9 @@ def main() -> int:
     pygame.display.set_caption("INVADERS — a starfield_kit tutorial game")
     clock = pygame.time.Clock()
 
-    # --- Step 2: the starfield — static (velocity zero), quietly twinkling.
-    stars = Starfield((WIDTH, HEIGHT), velocity=(0, 0), twinkle_speed=0.7, seed=7)
+    # --- Step 2: the starfield — static (velocity zero), quietly twinkling,
+    # with 3-pixel stars to match the 3x scale the sprites are drawn at.
+    stars = Starfield((WIDTH, HEIGHT), velocity=(0, 0), twinkle_speed=0.7, star_size=3, seed=7)
 
     player_img = sprite(PLAYER_ART, COLORS, scale=3)
     invader_img = sprite(INVADER_ART, COLORS, scale=3)

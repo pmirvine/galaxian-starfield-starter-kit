@@ -156,6 +156,34 @@ def test_twinkle_animates_and_zero_disables():
     assert render(frozen) == before
 
 
+# --- star size -----------------------------------------------------------------------
+
+
+def test_star_size_draws_square_blocks():
+    field = Starfield((80, 80), count=1, star_size=3, twinkle_speed=0, seed=5)
+    pixels = lit_pixels(field)
+    assert len(pixels) == 9  # one star = one 3x3 block
+    xs = [x for x, _, _ in pixels]
+    ys = [y for _, y, _ in pixels]
+    assert max(xs) - min(xs) == 2 and max(ys) - min(ys) == 2
+
+
+def test_star_size_is_a_live_property():
+    field = Starfield((80, 80), count=1, star_size=1, twinkle_speed=0, seed=5)
+    assert field.star_size == 1
+    assert len(lit_pixels(field)) == 1
+    field.star_size = 4  # restyle mid-game, no rebuild required
+    assert len(lit_pixels(field)) == 16
+    field.star_size = None  # back to automatic (1 px at this window height)
+    assert field.star_size is None
+    assert len(lit_pixels(field)) == 1
+
+
+def test_star_size_scales_down_across_parallax_layers():
+    field = Starfield((300, 300), star_size=3, layers=3, seed=2)
+    assert [layer.size for layer in field._layers] == [1, 2, 3]  # far -> near
+
+
 # --- layers and resize --------------------------------------------------------------
 
 

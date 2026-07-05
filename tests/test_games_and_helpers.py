@@ -53,9 +53,12 @@ def test_demo_state_builds_all_parameter_combos():
         state.palette_i = i
         for j in range(len(demo.LAYER_CHOICES)):
             state.layers_i = j
-            field = state.build()
-            assert field.star_count > 0
+            for k in range(len(demo.STAR_SIZES)):
+                state.size_i = k
+                field = state.build()
+                assert field.star_count > 0
     assert "Starfield(size" in state.constructor_text()
+    assert "star_size=4" in state.constructor_text()  # last size in the cycle
 
 
 # --- galaxians ------------------------------------------------------------------------

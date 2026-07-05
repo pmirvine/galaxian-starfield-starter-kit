@@ -44,10 +44,13 @@ class Game:
         self.rng = random.Random()
 
         # STARFIELD: one gently falling arcade sky behind everything.
+        # star_size matches the sprites' pixel scale, so the stars sit in
+        # the same blocky world as everything else.
         self.stars = Starfield(
             (S.WINDOW_W, S.WINDOW_H),
             velocity=S.STAR_VELOCITY,
             density=S.STAR_DENSITY,
+            star_size=S.STAR_SIZE,
             seed=S.STAR_SEED,
         )
 

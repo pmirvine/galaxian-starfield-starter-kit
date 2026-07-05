@@ -18,6 +18,7 @@ SIZE = (960, 540)
 DENSITIES = [0.25, 0.5, 1.0, 2.0, 4.0]
 TWINKLES = [0.0, 0.3, 1.0, 2.0, 4.0]
 LAYER_CHOICES = [1, 2, 3, 5]
+STAR_SIZES: list[int | None] = [None, 1, 2, 3, 4]  # None = pick automatically
 PALETTES: list[str | list[tuple[int, int, int]]] = [
     "galaxian",
     "white",
@@ -27,7 +28,7 @@ PALETTE_NAMES = ["galaxian", "white", "custom embers"]
 
 HELP_LINES = [
     "arrows  push star velocity      space  stop scrolling",
-    "d density   t twinkle   l layers   p palette   r new sky",
+    "d density   t twinkle   l layers   p palette   s star size   r new sky",
     "presets:  1 galaxian   2 side-scroller   3 static backdrop",
     "h hide help    esc quit    (window is resizable)",
 ]
@@ -42,6 +43,7 @@ class DemoState:
         self.twinkle_i = 2  # -> 1.0
         self.layers_i = 0  # -> 1
         self.palette_i = 0  # -> "galaxian"
+        self.size_i = 0  # index into STAR_SIZES -> None (automatic)
         self.seed = 2026
         self.velocity = (0.0, 30.0)
         self.field = self.build()
@@ -55,6 +57,7 @@ class DemoState:
             twinkle_speed=TWINKLES[self.twinkle_i],
             layers=LAYER_CHOICES[self.layers_i],
             palette=PALETTES[self.palette_i],
+            star_size=STAR_SIZES[self.size_i],
             seed=self.seed,
         )
         self.field = field
@@ -74,6 +77,8 @@ class DemoState:
             parts.append("palette='white'")
         elif self.palette_i == 2:
             parts.append("palette=[...]")
+        if STAR_SIZES[self.size_i] is not None:
+            parts.append(f"star_size={STAR_SIZES[self.size_i]}")
         return f"Starfield(size, {', '.join(parts)})"
 
 
@@ -118,6 +123,10 @@ def main() -> int:
                     state.palette_i = (state.palette_i + 1) % len(PALETTES)
                     state.velocity = state.field.velocity
                     state.build()
+                elif key == pygame.K_s:
+                    # star_size is a live property — no rebuild needed
+                    state.size_i = (state.size_i + 1) % len(STAR_SIZES)
+                    state.field.star_size = STAR_SIZES[state.size_i]
                 elif key == pygame.K_r:
                     state.seed = random.randrange(1_000_000)
                     state.velocity = state.field.velocity

@@ -149,7 +149,12 @@ class Starfield:
             arcade colors), "white", or your own list of (r, g, b) tuples,
             e.g. ``palette=[(255, 200, 100), (150, 200, 255)]``.
         star_size: pixel size of the biggest stars. Leave as None to pick
-            a sensible size for your resolution automatically.
+            a sensible size for your resolution automatically. For blocky
+            retro games, set it to the same scale you draw your sprites
+            at — e.g. ``star_size=3`` when your art uses 3x3 blocks per
+            pixel, which is also about how chunky the 1979 original's
+            stars looked at a 3x window scale. Live: assign
+            ``field.star_size = 3`` any time (None returns it to auto).
         background: color the field paints behind the stars each frame.
             Defaults to black. Pass ``None`` to draw only the stars, over
             whatever you have already drawn (e.g. a gradient sky).
@@ -180,7 +185,7 @@ class Starfield:
         self.background = background
         self._density = float(density)
         self._explicit_count = count
-        self._star_size = star_size
+        self._star_size = None if star_size is None else max(1, int(star_size))
         self._rng = random.Random(seed)
         self._twinkle_clock = 0.0
 
@@ -227,6 +232,18 @@ class Starfield:
     def velocity(self, value: tuple[float, float]) -> None:
         vx, vy = value
         self._velocity = (float(vx), float(vy))
+
+    @property
+    def star_size(self) -> int | None:
+        """Pixel size of the biggest stars, or None when chosen automatically.
+        Assign a number (or None) at any time — handy for a chunky retro
+        look: ``field.star_size = 3``."""
+        return self._star_size
+
+    @star_size.setter
+    def star_size(self, value: int | None) -> None:
+        self._star_size = None if value is None else max(1, int(value))
+        self._rebuild_surfaces()
 
     # -- the three methods you call from a game loop -------------------------
 

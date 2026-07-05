@@ -47,11 +47,14 @@ class Game:
 
         # STARFIELD: three parallax layers, no velocity of its own — the
         # camera drives it. A slow drift on the title screen shows it off.
+        # star_size=3 keeps the nearest stars as chunky as the 3x sprites;
+        # the two farther parallax layers scale down to 2 and 1 pixels.
         self.stars = Starfield(
             (S.WINDOW_W, S.WINDOW_H),
             velocity=(-40, 0),
             layers=S.STAR_LAYERS,
             density=S.STAR_DENSITY,
+            star_size=S.STAR_SIZE,
             seed=S.STAR_SEED,
         )
 

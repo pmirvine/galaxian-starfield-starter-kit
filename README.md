@@ -70,6 +70,7 @@ Every use case is one constructor call:
 Starfield(size)                                  # Galaxian: slow downward drift
 Starfield(size, velocity=(0, 0))                 # static, twinkling (Invaders)
 Starfield(size, velocity=(-150, 0), layers=3)    # side-scroller with parallax
+Starfield(size, star_size=3)                     # chunky stars for 3x pixel art
 Starfield(size, density=3, palette="white")      # busy modern sky
 Starfield(size, count=80, twinkle_speed=0)       # sparse and still
 ```

@@ -94,12 +94,28 @@ is no visual cost to leaving it at 1 for static or slow fields.
   `palette=[(255, 190, 120), (255, 120, 60)]` for embers, or a single
   color like `[(120, 180, 255)]` for an ice world.
 
-### `star_size`
+### `star_size` — match your game's pixel scale
 
 Pixel size of the biggest (nearest) stars. Leave it `None` and the field
 picks sensibly for the resolution (1 px below 600-tall windows, scaling up
-from there). Set it explicitly for style: `star_size=3` reads as big
-chunky snow.
+from there).
+
+For blocky retro games, set it explicitly to the scale your art is drawn
+at, so one star = one "virtual pixel" of your world. All three sample
+games draw their sprites at 3× and pass `star_size=3` for exactly this
+reason — it is also about how chunky the 1979 original's stars looked at
+a 3× window scale:
+
+```python
+PIXEL_SCALE = 3                       # your sprites are 3x3 blocks per pixel
+field = Starfield(size, star_size=PIXEL_SCALE)
+```
+
+With parallax (`layers=3`), `star_size` sets the *nearest* plane; farther
+planes shrink automatically (3 → 2 → 1 px), which deepens the effect.
+
+It is a live property too — `field.star_size = 4` restyles the field
+mid-game, and `field.star_size = None` returns it to automatic.
 
 ### `background`
 
@@ -124,6 +140,7 @@ you just like a particular sky). `None` = random each run.
 | `resize(size)`            | Refit to a new window size, preserving the layout and density. |
 | `velocity`                | Live `(vx, vy)` property. |
 | `twinkle_speed`           | Live attribute; `0` stops twinkling. |
+| `star_size`               | Live property; a pixel size, or `None` for automatic. |
 | `background`              | Live attribute; color or `None`. |
 | `size`                    | Current `(width, height)`. |
 | `star_count`              | Actual number of stars. |
@@ -133,11 +150,12 @@ you just like a particular sky). `None` = random each run.
 ### 1. Static twinkling backdrop (Space Invaders, menus, puzzles)
 
 ```python
-field = Starfield(screen.get_size(), velocity=(0, 0), twinkle_speed=0.7)
+field = Starfield(screen.get_size(), velocity=(0, 0), twinkle_speed=0.7, star_size=3)
 ```
 
 Still call `update(dt)` — that's what animates the twinkle. This is the
-setup the [tutorial](tutorial.md) uses.
+setup the [tutorial](tutorial.md) uses (`star_size=3` because its sprites
+are drawn at 3× — see the parameter above).
 
 ### 2. The Galaxian look
 

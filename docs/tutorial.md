@@ -89,7 +89,7 @@ heart of every game ever made. Two lines deserve attention:
 Three lines. After `clock = ...`, create the field:
 
 ```python
-stars = Starfield((WIDTH, HEIGHT), velocity=(0, 0), twinkle_speed=0.7, seed=7)
+stars = Starfield((WIDTH, HEIGHT), velocity=(0, 0), twinkle_speed=0.7, star_size=3, seed=7)
 ```
 
 Inside the loop, *before* the drawing, animate it; and replace the
@@ -108,6 +108,12 @@ Run it. A night sky, gently twinkling. The parameters we picked:
   a scrolling sky would look wrong. (Try `(0, 30)` for a moment to see the
   difference — then put it back.)
 * `twinkle_speed=0.7` — a little calmer than the arcade default of 1.0.
+* `star_size=3` — every star is a 3×3 block. That is no accident: in
+  Step 3 we will draw our sprites at 3× scale, and giving the stars the
+  same "virtual pixel" size makes the whole screen feel like one chunky
+  low-resolution machine (it is also about how fat the 1979 arcade's
+  stars looked at this window scale). Leave it out and the field picks a
+  subtler size automatically.
 * `seed=7` — the same sky every run. Any number works; each gives its own
   layout. Delete the argument for a fresh sky per run.
 

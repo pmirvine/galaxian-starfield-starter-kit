@@ -13,6 +13,7 @@ PIXEL_SCALE = 3  # sprite ASCII art is blown up by this factor
 # --- starfield ---------------------------------------------------------------
 STAR_VELOCITY = (0, 40)  # gentle downward drift, like the arcade
 STAR_DENSITY = 1.2
+STAR_SIZE = PIXEL_SCALE  # stars one retro-pixel big, same 3x scale as the sprites
 STAR_SEED = 1979  # fixed layout so the game always opens the same sky
 
 # --- player ------------------------------------------------------------------
