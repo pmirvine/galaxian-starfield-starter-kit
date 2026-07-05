@@ -163,10 +163,16 @@ are drawn at 3× — see the parameter above).
 field = Starfield(screen.get_size())          # velocity=(0, 30) is the default
 ```
 
-Colored stars falling gently, blinking at the arcade rate. (For the
-cycle-exact 1979 hardware simulation — the actual shift-register star
-generator — see the companion repo
-[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield).)
+Colored stars falling gently, blinking at the arcade rate. To go all the
+way to the cabinet's own numbers — a 224×256 screen at 3× scale, 252
+stars of 3 pixels, drifting at the hardware's exact ~91 px/s — run
+`uv run galaxians-demo` and read
+[`galaxians/attract.py`](../src/starfield_kit/galaxians/attract.py): a
+short non-interactive tableau that exists precisely to show that setup
+(and makes a clean skeleton for a game of your own). For the cycle-exact
+1979 hardware simulation — the actual shift-register star generator — see
+the companion repo
+[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield).
 
 ### 3. Horizontal scroller where the player accelerates
 

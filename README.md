@@ -29,6 +29,7 @@ uv run starfield-demo     # the interactive playground
 uv run galaxians          # dive-bombing convoy over a drifting sky
 uv run defender           # inertia, a wrapping world, parallax stars
 uv run invaders           # the tutorial game: static twinkling backdrop
+uv run galaxians-demo     # non-interactive: the 1979 starfield at true arcade geometry
 ```
 
 Or with plain pip (Python 3.10+): `pip install -e .` then `starfield-demo`.
@@ -103,9 +104,28 @@ waves and noise ([`retro/sfx.py`](src/starfield_kit/retro/sfx.py)).
 ## Where this comes from
 
 The default palette, drift speed, and twinkle rhythm are modeled on the
-starfield of Namco's **Galaxian (1979)**. If you want the cycle-exact
-hardware simulation of that board — the actual 17-bit LFSR star generator,
-half-pixel stars and all — that lives in the companion repo
+starfield of Namco's **Galaxian (1979)**. To see that lineage plainly, run
+
+```sh
+uv run galaxians-demo
+```
+
+<img src="docs/screenshots/galaxian_1979.png" width="336" align="right" alt="The 1979 tableau: static convoy and ship over the drifting starfield">
+
+— a deliberately **non-interactive** tableau at the cabinet's true
+geometry: a 224×256 screen at 3× (672×768), 3-pixel stars, 252 of them,
+drifting down at the hardware's exact ~91 px/s, behind a frozen convoy,
+score header, and ship. Nothing moves but the sky — it exists purely to
+show the starfield as it appeared in the original game. It is also a
+tidy skeleton to build on: the screen is already laid out at arcade
+proportions, so adding a keyboard-controlled ship is the natural first
+step toward your own Galaxian
+([`galaxians/attract.py`](src/starfield_kit/galaxians/attract.py) is a
+single short file).
+
+If you want the cycle-exact hardware simulation of that board — the
+actual 17-bit LFSR star generator, half-pixel stars and all — that lives
+in the companion repo
 **[galaxian-starfield](https://github.com/pmirvine/galaxian-starfield)**.
 This kit is the friendly, flexible cousin: same soul, any game.
 

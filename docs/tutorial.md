@@ -407,6 +407,11 @@ Some things worth noticing about what you built:
   diving enemies, title/game-over scenes) and `uv run defender`
   (a camera moving through a wrapping world, with the starfield driven by
   `scroll()` — the technique for any side-scroller).
+* **Start a game from the arcade tableau.** `uv run galaxians-demo` is a
+  non-interactive screen at Galaxian's true 1979 geometry — starfield,
+  convoy, ship, all laid out, nothing wired up. Adding arrow keys and a
+  fire button to `src/starfield_kit/galaxians/attract.py` is a lovely
+  second project after this one.
 * **Explore every starfield knob** in the playground: `uv run
   starfield-demo`, and its reference: [starfield-api.md](starfield-api.md).
 * **Steal this kit for your own game.** Copy

@@ -11,6 +11,7 @@ dependencies = [
 [project.scripts]
 starfield-demo = "starfield_kit.demo:main"
 galaxians = "starfield_kit.galaxians.main:main"
+galaxians-demo = "starfield_kit.galaxians.attract:main"
 defender = "starfield_kit.defender.main:main"
 invaders = "starfield_kit.invaders.main:main"
 

@@ -106,6 +106,25 @@ def test_galaxians_wave_clears_when_convoy_dies():
     assert len(game.world.convoy.aliens) == 32
 
 
+def test_galaxians_attract_matches_the_arcade_numbers():
+    from starfield_kit.galaxians import attract, sprites
+
+    # 224x256 native at 3x scale, like the rotated cabinet monitor.
+    assert (attract.WINDOW_W, attract.WINDOW_H) == (672, 768)
+    stars = attract.make_starfield()
+    assert stars.star_count == 252  # 256 per LFSR cycle minus the 4 black
+    vx, vy = stars.velocity
+    assert vx == 0
+    assert vy == pytest.approx(0.5 * 60.606 * 3)  # half a native px per frame
+    assert stars.star_size == 3
+
+    # The tableau draws without crashing, and the convoy is 36 strong.
+    assert sum(count for _, count in attract.CONVOY_ROWS) == 36
+    screen = pygame.display.set_mode((attract.WINDOW_W, attract.WINDOW_H))
+    stars.update(1 / 60)
+    attract.draw_frame(screen, stars, sprites.load(attract.SCALE))
+
+
 # --- defender -----------------------------------------------------------------------
 
 

@@ -6,6 +6,7 @@ so the project virtualenv is always used — never invoke a bare `python`/`pip`.
 ## Commands
 - Interactive starfield playground: `uv run starfield-demo`
 - Sample games: `uv run galaxians` · `uv run defender` · `uv run invaders`
+- Arcade-geometry tableau (non-interactive): `uv run galaxians-demo`
 - Test (headless): `uv run pytest`
 - Format: `uv run ruff format .`
 - Lint (autofix): `uv run ruff check --fix .`
