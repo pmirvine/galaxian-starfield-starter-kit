@@ -185,6 +185,138 @@ def test_defender_baiters_arrive_when_dawdling():
     assert len(game.world.baiters) == 1
 
 
+# --- asteroids ------------------------------------------------------------------------
+
+
+def test_asteroids_rocks_split_and_world_wraps(monkeypatch):
+    from starfield_kit.asteroids import main as ast
+
+    game = ast.Game()
+    chunks = game.rocks[0].split(game.rng)
+    assert [c.tier for c in chunks] == [2, 2]  # big rocks break in two
+    assert ast.Rock(pygame.Vector2(0, 0), 1, game.rng).split(game.rng) == []
+    assert ast.wrap(pygame.Vector2(-5, 610)) == pygame.Vector2(795, 10)
+
+    monkeypatch.setattr(pygame.key, "get_pressed", lambda: FakeKeys({pygame.K_UP, pygame.K_SPACE}))
+    game._pressed = set()
+    for _ in range(60 * 4):  # thrust and fire blindly for four seconds
+        game.update(1 / 60)
+    assert 0 <= game.ship.pos.x < ast.WIDTH and 0 <= game.ship.pos.y < ast.HEIGHT
+    assert all(0 <= r.pos.x < ast.WIDTH for r in game.rocks)
+    game.draw()
+
+
+# --- skyraid --------------------------------------------------------------------------
+
+
+def test_skyraid_throttle_drives_the_starfield(monkeypatch):
+    from starfield_kit.skyraid import main as sr
+
+    game = sr.Game()
+    monkeypatch.setattr(pygame.key, "get_pressed", lambda: FakeKeys({pygame.K_UP}))
+    game._pressed = set()
+    for _ in range(120):
+        game.update(1 / 60)
+    assert game.throttle > sr.THROTTLE_MIN
+    assert game.stars.velocity == (0, game.throttle)  # the live-velocity link
+
+    # Clearing the wave triggers the warp burst: twinkle off, velocity ramps.
+    game.raiders.clear()
+    game.update(1 / 60)
+    assert game.warp_timer > 0
+    assert game.stars.twinkle_speed == 0
+    for _ in range(60):
+        game.update(1 / 60)
+    assert game.stars.velocity[1] > sr.THROTTLE_MAX  # well past cruise speed
+    for _ in range(int(sr.WARP_TIME * 60) + 10):
+        game.update(1 / 60)
+    assert game.warp_timer <= 0
+    assert game.stars.twinkle_speed == 1.0  # sanity restored
+    assert game.wave == 2
+    game.draw()
+
+
+# --- lander ---------------------------------------------------------------------------
+
+
+def test_lander_gravity_landing_and_crash():
+    from starfield_kit.lander import main as ld
+
+    game = ld.Game()
+    game._pressed = set()
+    vy0 = game.vy
+    for _ in range(30):
+        game.update(1 / 60)  # hands off the controls: gravity wins
+    assert game.vy > vy0
+
+    # Hover just above the widest pad at a gentle speed: touchdown.
+    i0, i1, _mult = game.pads[0]
+    game.x = (i0 + i1) / 2 * ld.TERRAIN_STEP
+    game.y = game.terrain[i0] - game.ship_img.get_height() / 2 - 1
+    game.vx, game.vy = 0.0, 20.0
+    for _ in range(10):  # a few frames to close the last pixel
+        game.update(1 / 60)
+        if game.landed:
+            break
+    assert game.landed
+    assert game.score > 0
+    game.draw()
+
+    # Same spot but way too fast: that is a crash, not a landing.
+    crash = ld.Game()
+    crash._pressed = set()
+    i0, i1, _mult = crash.pads[0]
+    crash.x = (i0 + i1) / 2 * ld.TERRAIN_STEP
+    crash.y = crash.terrain[i0] - crash.ship_img.get_height() / 2 - 1
+    crash.vx, crash.vy = 0.0, 200.0
+    crash.update(1 / 60)
+    assert not crash.landed
+    assert crash.ships == ld.START_SHIPS - 1
+
+
+# --- missiles -------------------------------------------------------------------------
+
+
+def test_missiles_interceptor_blooms_and_chains():
+    from starfield_kit.missiles import main as ms
+
+    game = ms.Game()
+    game.launch((400, 200))
+    assert len(game.interceptors) == 1
+    assert game.ammo == ms.AMMO_PER_WAVE - 1
+    for _ in range(300):  # let it fly to the mark
+        game.update(1 / 60)
+        if game.blasts:
+            break
+    assert game.blasts, "the interceptor should bloom into a blast"
+
+    # An enemy at the blast's heart dies, scores, and blooms in turn.
+    enemy = ms.Enemy(1, [400], game.rng)
+    enemy.pos = pygame.Vector2(game.blasts[0].pos)
+    game.enemies.append(enemy)
+    score0, blasts0 = game.score, len(game.blasts)
+    game.update(1 / 60)
+    assert enemy not in game.enemies
+    assert game.score >= score0 + 25
+    assert len(game.blasts) > blasts0  # the chain reaction
+    game.draw()
+
+
+def test_missiles_city_falls_when_hit():
+    from starfield_kit.missiles import main as ms
+
+    game = ms.Game()
+    game.to_spawn = 0
+    enemy = ms.Enemy(1, [ms.CITY_XS[0]], game.rng)
+    enemy.pos = enemy.target - pygame.Vector2(0, 4)
+    game.enemies = [enemy]
+    for _ in range(30):
+        game.update(1 / 60)
+        if not game.cities[0]:
+            break
+    assert game.cities[0] is False
+
+
 # --- invaders -------------------------------------------------------------------------
 
 

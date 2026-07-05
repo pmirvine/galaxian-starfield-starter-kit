@@ -2,20 +2,13 @@
 
 An arcade-style **starfield background for [pygame-ce](https://pyga.me/)**
 that you can drop into any game — any window size, any scroll direction
-and speed (or none at all), twinkle, parallax depth, adjustable density,
-the real Galaxian star colors — **plus three complete sample games and a
-from-scratch beginner tutorial** showing how to use it.
+and speed (or none at all), twinkle, parallax depth, adjustable density
+and star size, the real Galaxian star colors — **plus seven playable demo
+games and a from-scratch beginner tutorial** showing how to use it.
 
 Built for novice game developers: every sprite is ASCII art in the source,
 every sound is synthesized in ~30 lines you can read, and every game is
 small enough to understand in one sitting.
-
-| | |
-| --- | --- |
-| ![Galaxians](docs/screenshots/galaxians_play.png) | ![Defender](docs/screenshots/defender_play.png) |
-| `uv run galaxians` — scrolling sky | `uv run defender` — parallax + camera |
-| ![Invaders](docs/screenshots/invaders_play.png) | ![Playground](docs/screenshots/demo.png) |
-| `uv run invaders` — static twinkling sky | `uv run starfield-demo` — the playground |
 
 ## Quick start
 
@@ -25,14 +18,29 @@ for you):
 ```sh
 git clone https://github.com/pmirvine/galaxian-starfield-starter-kit.git
 cd galaxian-starfield-starter-kit
-uv run starfield-demo     # the interactive playground
-uv run galaxians          # dive-bombing convoy over a drifting sky
-uv run defender           # inertia, a wrapping world, parallax stars
-uv run invaders           # the tutorial game: static twinkling backdrop
-uv run galaxians-demo     # non-interactive: the 1979 starfield at true arcade geometry
+uv run starfield-demo     # start here: the interactive playground
 ```
 
 Or with plain pip (Python 3.10+): `pip install -e .` then `starfield-demo`.
+
+## The demos
+
+Nine programs ship with the kit. Each is complete, readable in one
+sitting, and chosen to teach a **different starfield setup** and a
+**different game-programming lesson** — together they cover every
+parameter the library has.
+
+| | |
+| --- | --- |
+| <img src="docs/screenshots/demo.png" width="400" alt="The playground"> | **`uv run starfield-demo`** — the interactive playground. Every parameter is on a key (velocity, density, twinkle, layers, palette, star size), and the HUD shows the exact `Starfield(...)` constructor line for what you're looking at, ready to copy into your own game. |
+| <img src="docs/screenshots/invaders_play.png" width="400" alt="Invaders"> | **`uv run invaders`** — the tutorial game. A marching grid over a **static, twinkling backdrop** (`velocity=(0, 0)`). The simplest code in the kit — one file, lists of rects, no classes — and [docs/tutorial.md](docs/tutorial.md) builds it from an empty file, step by step. |
+| <img src="docs/screenshots/asteroids_play.png" width="400" alt="Asteroids"> | **`uv run asteroids`** — rotation and thrust as *vectors*, wrap-around space, circle collisions, rocks that split. The starfield is the **quiet configuration**: still, sparse, plain white (`count=90, palette="white"`), so it reads like a 1979 vector monitor. |
+| <img src="docs/screenshots/missiles_play.png" width="400" alt="Missile Defense"> | **`uv run missiles`** — the **mouse** demo: click the sky and an interceptor blooms into an expanding blast; enemy warheads die into blasts of their own, so shots chain. Missile trails are just two points and a line. Still night sky in the arcade palette. |
+| <img src="docs/screenshots/lander_play.png" width="400" alt="Lunar Lander"> | **`uv run lander`** — gravity, fuel, and an instrument panel that turns red when your touchdown numbers would kill you. Shows **stars over your own art**: the field uses `background=None` and is drawn on top of a dusk-gradient sky the game paints itself. |
+| <img src="docs/screenshots/skyraid_play.png" width="400" alt="Sky Raid"> | **`uv run skyraid`** — a vertical shooter where **your throttle drives the sky**: the game rewrites `stars.velocity` every frame, raiders dive faster when you fly faster, and clearing a wave triggers a **warp burst** to ~1500 px/s. The live-velocity showcase. |
+| <img src="docs/screenshots/galaxians_play.png" width="400" alt="Galaxians"> | **`uv run galaxians`** — the big structured sample: title and game-over scenes, a swaying convoy, curved diving attacks, waves and extra lives, under the classic **drifting Galaxian sky**. Its `settings.py` / `sprites.py` / `entities.py` / `main.py` layout is the shape to copy for a real project. |
+| <img src="docs/screenshots/defender_play.png" width="400" alt="Defender"> | **`uv run defender`** — momentum flight through a **wrapping world**, with a look-ahead camera that drives the starfield via `scroll()` and **three parallax layers** for depth, plus a radar. The technique for any side-scroller. |
+| <img src="docs/screenshots/galaxian_1979.png" width="400" alt="Galaxian 1979 tableau"> | **`uv run galaxians-demo`** — non-interactive: the starfield at Galaxian's **true 1979 geometry** (224×256 at 3×, 252 three-pixel stars, drifting at the hardware's exact ~91 px/s) behind a frozen convoy and score header. The heritage exhibit — and a clean skeleton to grow into your own game. |
 
 ## The starfield in three lines
 
@@ -88,14 +96,20 @@ Space-Invaders-style game from an empty file, step by step: window → loop
 over. The finished game ships as `uv run invaders`, with its code
 annotated by tutorial step.
 
-Then read the two bigger samples, in order:
+Then climb the ladder of demos, roughly in this order:
 
 | game | teaches |
 | --- | --- |
-| [`galaxians/`](src/starfield_kit/galaxians/) | scenes (title/play/game over), sprite animation, diving enemies with curved paths, scoring, waves — under a classic scrolling sky |
-| [`defender/`](src/starfield_kit/defender/) | acceleration + momentum, a wrapping world, a look-ahead camera, radar — with the starfield driven by the camera (`scroll()`) and 3 parallax layers |
+| [`invaders/`](src/starfield_kit/invaders/) | the fundamentals — the loop, `dt`, rects, lists as entities (the tutorial's game) |
+| [`asteroids/`](src/starfield_kit/asteroids/) | vectors: rotation, thrust with momentum, circle collisions, wrap-around space |
+| [`missiles/`](src/starfield_kit/missiles/) | mouse input, line trails, expanding-circle blasts and chain reactions |
+| [`lander/`](src/starfield_kit/lander/) | gravity-and-fuel physics, terrain, an instrument HUD with danger colors |
+| [`skyraid/`](src/starfield_kit/skyraid/) | difficulty as a *dial the player holds*: throttle-linked speed, warp transitions |
+| [`galaxians/`](src/starfield_kit/galaxians/) | scenes (title/play/game over), sprite animation, diving enemies with curved paths, scoring, waves |
+| [`defender/`](src/starfield_kit/defender/) | acceleration + momentum, a wrapping world, a look-ahead camera, radar — the starfield driven by the camera (`scroll()`) |
 
-Both are structured the same way (`settings.py` for every tunable number,
+The five smaller games are single files; the two big ones are structured
+the same way as each other (`settings.py` for every tunable number,
 `sprites.py` for the ASCII art, `entities.py` for behavior, `main.py` for
 the loop) so what you learn in one transfers to the other. No binary
 assets anywhere: sprites are ASCII grids, sounds are synthesized square
@@ -104,22 +118,11 @@ waves and noise ([`retro/sfx.py`](src/starfield_kit/retro/sfx.py)).
 ## Where this comes from
 
 The default palette, drift speed, and twinkle rhythm are modeled on the
-starfield of Namco's **Galaxian (1979)**. To see that lineage plainly, run
-
-```sh
-uv run galaxians-demo
-```
-
-<img src="docs/screenshots/galaxian_1979.png" width="336" align="right" alt="The 1979 tableau: static convoy and ship over the drifting starfield">
-
-— a deliberately **non-interactive** tableau at the cabinet's true
-geometry: a 224×256 screen at 3× (672×768), 3-pixel stars, 252 of them,
-drifting down at the hardware's exact ~91 px/s, behind a frozen convoy,
-score header, and ship. Nothing moves but the sky — it exists purely to
-show the starfield as it appeared in the original game. It is also a
-tidy skeleton to build on: the screen is already laid out at arcade
-proportions, so adding a keyboard-controlled ship is the natural first
-step toward your own Galaxian
+starfield of Namco's **Galaxian (1979)**. To see that lineage plainly,
+run `uv run galaxians-demo` (the last entry in the gallery above): the
+cabinet's true geometry and numbers, with nothing moving but the sky —
+it exists purely to show the starfield as it appeared in the original
+game, and doubles as a tidy skeleton to grow into your own Galaxian
 ([`galaxians/attract.py`](src/starfield_kit/galaxians/attract.py) is a
 single short file).
 
@@ -145,7 +148,12 @@ src/starfield_kit/
   starfield.py     THE library — self-contained, copy this file
   demo.py          interactive parameter playground
   invaders/        the tutorial game (simplest — start here)
+  asteroids/       demo: vectors and rotation, quiet white sky
+  missiles/        demo: mouse input, blast chains, night sky
+  lander/          demo: gravity physics, stars over a gradient
+  skyraid/         demo: throttle-linked scrolling and warp bursts
   galaxians/       sample: convoy, dives, scenes, scrolling sky
+                   (+ attract.py — the 1979 arcade-geometry tableau)
   defender/        sample: momentum, wrapping world, parallax via scroll()
   retro/           shared teaching helpers: pixel art, synth sfx, chunky text
 docs/

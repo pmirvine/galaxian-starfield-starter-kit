@@ -14,6 +14,10 @@ galaxians = "starfield_kit.galaxians.main:main"
 galaxians-demo = "starfield_kit.galaxians.attract:main"
 defender = "starfield_kit.defender.main:main"
 invaders = "starfield_kit.invaders.main:main"
+asteroids = "starfield_kit.asteroids.main:main"
+skyraid = "starfield_kit.skyraid.main:main"
+lander = "starfield_kit.lander.main:main"
+missiles = "starfield_kit.missiles.main:main"
 
 [build-system]
 requires = ["hatchling"]

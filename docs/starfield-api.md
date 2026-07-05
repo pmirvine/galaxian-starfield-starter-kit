@@ -155,7 +155,10 @@ field = Starfield(screen.get_size(), velocity=(0, 0), twinkle_speed=0.7, star_si
 
 Still call `update(dt)` — that's what animates the twinkle. This is the
 setup the [tutorial](tutorial.md) uses (`star_size=3` because its sprites
-are drawn at 3× — see the parameter above).
+are drawn at 3× — see the parameter above). Two variations to compare:
+`uv run asteroids` (sparse, white, barely twinkling — the quietest sky in
+the kit) and `uv run missiles` (arcade colors, calm twinkle, over a
+cityscape).
 
 ### 2. The Galaxian look
 
@@ -215,6 +218,9 @@ screen.blit(my_gradient, (0, 0))    # your sky
 field.draw(screen)                  # stars on top of it
 ```
 
+`uv run lander` does exactly this — white stars over a dusk gradient the
+game computes at startup.
+
 ### 6. Warp speed
 
 ```python
@@ -223,7 +229,10 @@ field.twinkle_speed = 0             # twinkle reads as flicker at this speed
 ```
 
 Snap back to `(0, 30)` when the hyperdrive spools down. Because `velocity`
-is live, you can ease it with any curve you like.
+is live, you can ease it with any curve you like. `uv run skyraid` builds
+a whole game on this: the throttle writes `stars.velocity` every frame,
+and clearing a wave triggers exactly this warp burst (search its
+`main.py` for `# STARFIELD`).
 
 ### 7. Handling window resize
 
