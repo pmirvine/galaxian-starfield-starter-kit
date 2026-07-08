@@ -4,6 +4,11 @@ Each sprite is a list of strings (one character per pixel) with a legend
 mapping characters to colors. Aliens get two frames so their wings flap.
 Edit the art right here — add a row, change a color, give the flagship a
 hat. The `load()` function turns the art into pygame Surfaces.
+
+There are no image files anywhere. `retro.pixelart.sprite()` reads each
+string as a row of pixels — '.' means transparent — and paints one square
+of PIXEL_SCALE screen pixels per character. Change a few characters and
+rerun: the aliens redraw themselves.
 """
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ import pygame
 from ..retro.pixelart import sprite
 
 # Legend characters shared by all the art below.
+# TWEAK: recolor the fleet here — plain (red, green, blue) tuples, 0-255 each.
 WHITE = (230, 230, 255)
 RED = (255, 60, 60)
 BLUE = (80, 120, 255)
@@ -24,6 +30,7 @@ ORANGE = (255, 150, 60)
 
 # --- the player's fighter -----------------------------------------------------
 
+# The widest row sets the sprite's width; anything not drawn stays transparent.
 PLAYER = [
     "......W......",
     "......W......",
@@ -39,7 +46,8 @@ PLAYER = [
 ]
 
 # --- the convoy ---------------------------------------------------------------
-# Two frames each: A = wings spread, B = wings tucked.
+# Two frames each: A = wings spread, B = wings tucked. main.py flips every
+# alien between them on one shared beat (S.FLAP_RATE beats per second).
 
 DRONE_A = [
     ".r.......r.",
@@ -107,6 +115,8 @@ FLAGSHIP_B = [
     "..y.....y..",
 ]
 
+# Which letter paints which color. Every letter the art uses must appear here
+# — an unknown character is an error, so typos get caught at startup.
 LEGEND = {
     "W": WHITE,
     "R": RED,
@@ -123,6 +133,8 @@ LEGEND = {
 def load(scale: int) -> dict[str, list[pygame.Surface]]:
     """Build every sprite at the given pixel scale. Returns a mapping of
     name -> animation frames (a one-frame list for the player)."""
+    # Adding a new alien? Draw NEWTHING_A/_B above, register it here, then give
+    # it a row in settings.FORMATION_ROWS — the convoy handles the rest.
     return {
         "player": [sprite(PLAYER, LEGEND, scale)],
         "drone": [sprite(DRONE_A, LEGEND, scale), sprite(DRONE_B, LEGEND, scale)],

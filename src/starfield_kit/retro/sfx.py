@@ -6,6 +6,9 @@ values for noise) and handed to ``pygame.mixer.Sound(buffer=...)``. That
 keeps the repository free of binary assets and shows how simple retro
 audio really is: a laser is just a square wave whose pitch falls quickly.
 
+Everything is stdlib: each helper fills an ``array("h")`` of signed
+16-bit integers at 22050 samples per second, mono. No numpy required.
+
 Usage in a game::
 
     sounds = SoundBank()          # after pygame.init()
@@ -45,18 +48,21 @@ def _sweep(
     """A square wave that glides from start_hz to end_hz. With vibrato it
     warbles around that glide — instant 1979. Phase is accumulated sample
     by sample so the sweep stays click-free."""
-    n = int(RATE * duration)
-    out = array("h")
+    n = int(RATE * duration)  # total sample count = rate x seconds
+    out = array("h")  # "h" = signed 16-bit, the format the mixer expects
     phase = 0.0
     for i in range(n):
-        progress = i / n
-        hz = start_hz + (end_hz - start_hz) * progress
+        progress = i / n  # 0.0 at the first sample, 1.0 at the last
+        hz = start_hz + (end_hz - start_hz) * progress  # linear glide between the pitches
         if vibrato_hz:
             hz += vibrato_depth * math.sin(2 * math.pi * vibrato_hz * i / RATE)
         phase += hz / RATE
+        # The square wave itself: +1 for half of every cycle, -1 for the other half.
+        # TWEAK: make it a triangle (4 * abs(phase % 1 - 0.5) - 1) and every laser,
+        # blip and fanfare in the kit softens — this one line shapes them all.
         sample = 1.0 if phase % 1.0 < 0.5 else -1.0
-        level = volume * (1.0 - progress if fade else 1.0)
-        out.append(int(sample * level * 32767))
+        level = volume * (1.0 - progress if fade else 1.0)  # fade = linear ramp to silence
+        out.append(int(sample * level * 32767))  # scale -1..1 up to the 16-bit range
     return out.tobytes()
 
 
@@ -69,14 +75,17 @@ def _noise(duration: float, *, volume: float = 0.5, smooth: float = 0.0) -> byte
     value = 0.0
     for i in range(n):
         target = rng.uniform(-1.0, 1.0)
+        # Chase each new random value only part-way — a one-line low-pass filter.
+        # High ``smooth`` chases slowly: less hiss, more rumble.
         value += (target - value) * (1.0 - smooth)
-        level = volume * (1.0 - i / n) ** 2
+        level = volume * (1.0 - i / n) ** 2  # squared fade-out: dies fast, like a real bang
         out.append(int(value * level * 32767))
     return out.tobytes()
 
 
 def _notes(frequencies: list[float], note_duration: float, *, volume: float = 0.4) -> bytes:
     """A little tune: square-wave notes played back to back."""
+    # A "note" is a sweep going nowhere: same start and end pitch, no fade.
     chunks = [_sweep(note_duration, hz, hz, volume=volume, fade=False) for hz in frequencies]
     return b"".join(chunks)
 
@@ -87,6 +96,13 @@ def _notes(frequencies: list[float], note_duration: float, *, volume: float = 0.
 
 
 def _build_effects() -> dict[str, bytes]:
+    """Every effect in the kit, as one-line recipes.
+
+    Reading a ``_sweep`` line: (duration_s, start_hz, end_hz) — a long fall
+    in pitch reads as "pew". ``_noise`` is an explosion (more ``smooth`` =
+    deeper thud), ``_notes`` a row of short flat tones. Changing a recipe
+    here changes that sound in every sample game at once.
+    """
     return {
         # pew: a fast falling square sweep
         "laser": _sweep(0.12, 1400, 250, volume=0.35),
@@ -127,10 +143,11 @@ class SoundBank:
         try:
             # Our sample buffers are 22050 Hz signed 16-bit mono, so the
             # mixer must match; reopen it if pygame.init() chose otherwise.
+            # (The small 512-sample buffer keeps effects snappy — low latency.)
             if pygame.mixer.get_init() != (RATE, -16, 1):
                 pygame.mixer.quit()
                 pygame.mixer.init(RATE, -16, 1, buffer=512)
-            pygame.mixer.set_num_channels(16)
+            pygame.mixer.set_num_channels(16)  # so rapid-fire shots don't cut each other off
         except pygame.error:
             return  # no audio device — stay disabled
         self._sounds = {

@@ -16,6 +16,9 @@ Two things here are worth stealing for your own games:
     of its own. Each frame the game tells it how far the camera moved
     (``stars.scroll(-moved, 0)``) and the three layers slide at their own
     depths. Search for ``# STARFIELD`` to see all four relevant lines.
+
+Everything tunable lives in ``settings.py`` (imported as ``S``); the most
+rewarding dials there are marked ``TWEAK:``.
 """
 
 from __future__ import annotations
@@ -36,6 +39,8 @@ TITLE, PLAYING, GAME_OVER = "title", "playing", "game over"
 
 
 class Game:
+    """Owns the window, the scenes (title / playing / game over) and the loop."""
+
     def __init__(self) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode((S.WINDOW_W, S.WINDOW_H))
@@ -62,7 +67,7 @@ class Game:
         self.scene_time = 0.0
         self.hiscore = 0
         self.world: World | None = None
-        self.cam = 0.0  # world x of the left edge of the screen
+        self.cam = 0.0  # world x of the left edge of the screen — the camera is just this number
         self.score = 0
         self.lives = 0
         self.wave = 0
@@ -84,12 +89,14 @@ class Game:
         self.scene_time = 0.0
 
     def start_wave(self) -> None:
+        # Each wave fields a few more landers — the whole difficulty ramp is here.
         count = S.LANDERS_PER_WAVE + (self.wave - 1) * S.LANDERS_WAVE_STEP
         self.world = World(
             player=Player(self.sprites["ship"][0].get_size()),
             landers=[Lander(self.rng) for _ in range(count)],
             terrain=make_terrain(self.rng),
         )
+        # Park the camera at its lookahead spot; % WORLD_W wraps any x onto the loop.
         self.cam = (self.world.player.x - S.WINDOW_W * S.CAMERA_LOOKAHEAD) % S.WORLD_W
         self.wave_clear_timer = 0.0
 
@@ -103,12 +110,19 @@ class Game:
 
     # -- coordinate helpers ------------------------------------------------------
 
+    # Entities live at a world x on the WORLD_W loop; the window shows one slice.
+    # These two helpers are the whole bridge between world and screen space.
+
     def to_screen(self, world_x: float) -> float:
         """World x -> screen x, relative to the camera (wrap-aware)."""
+        # Measure from the screen CENTER: wrap_delta picks the short way around
+        # the loop, so anything within half a world of center lands at a sane
+        # screen x — even when the view straddles the world seam.
         center = (self.cam + S.WINDOW_W / 2) % S.WORLD_W
         return wrap_delta(world_x, center) + S.WINDOW_W / 2
 
     def on_screen(self, sx: float, margin: float = 60) -> bool:
+        """Cheap cull: is this screen x close enough to the window to draw?"""
         return -margin < sx < S.WINDOW_W + margin
 
     # -- per-scene updates ---------------------------------------------------------
@@ -139,6 +153,8 @@ class Game:
             self.sounds.stop("thrust")
 
         if player.alive:
+            # SPACE fires, but only off cooldown AND under the LASER_MAX cap —
+            # both dials live in settings.py. The bolt starts at the ship's nose.
             if (
                 keys[pygame.K_SPACE]
                 and player.fire_cooldown <= 0
@@ -149,6 +165,7 @@ class Game:
                 world.lasers.append(Laser(nose % S.WORLD_W, player.y, player.facing))
                 self.sounds.play("zap")
         elif player.respawn_timer <= 0:
+            # Dead and done waiting: respawn if a life is left, otherwise game over.
             if self.lives > 0:
                 player.respawn()
             else:
@@ -159,14 +176,21 @@ class Game:
                 return
 
         # STARFIELD: move the camera, then push the stars the other way.
+        # The camera aims ahead of the ship's nose (the fraction flips with
+        # facing, so most of the screen is in front of you) and CAMERA_SNAP
+        # eases it there; `moved` is this frame's slide in world pixels.
         target = player.x - S.WINDOW_W * (
             S.CAMERA_LOOKAHEAD if player.facing == 1 else 1 - S.CAMERA_LOOKAHEAD
         )
         moved = wrap_delta(target, self.cam) * min(1.0, S.CAMERA_SNAP * dt)
         self.cam = (self.cam + moved) % S.WORLD_W
+        # The stars have no velocity of their own: feeding them -moved slides the
+        # sky opposite the camera, each layer at its own depth. That's parallax,
+        # and it is the one technique to steal for any side-scroller.
         self.stars.scroll(-moved, 0)
 
         # Enemies think; some of them shoot.
+        # (all their speeds and fire rates are settings.py dials)
         for lander in world.landers:
             shot = lander.update(dt, player.x, self.rng)
             if shot and player.alive:
@@ -182,6 +206,8 @@ class Game:
             world.baiters.append(Baiter(player.x, self.rng))
             self.sounds.play("dive")
 
+        # Move every projectile and spark, then rebuild each list without the
+        # dead — filtering a fresh list beats deleting from one mid-loop.
         for group in (world.lasers, world.enemy_shots, world.particles):
             for thing in group:
                 thing.update(dt)
@@ -192,6 +218,7 @@ class Game:
         self.check_collisions()
 
         if not world.landers and not world.baiters:
+            # Wave cleared: hold the fanfare a moment, then field a bigger wave.
             if self.wave_clear_timer == 0.0:
                 self.wave_clear_timer = S.WAVE_CLEAR_PAUSE
                 self.sounds.play("fanfare")
@@ -212,8 +239,10 @@ class Game:
         player = world.player
 
         # Lasers vs enemies (world-space, wrap-aware).
+        # list(...) makes a copy to iterate, because we remove from the real list.
         for laser in list(world.lasers):
             hit = None
+            # TWEAK: both checks use a 16 px hit radius — raise it for easier aiming.
             for lander in world.landers:
                 if laser.hits(lander.x, lander.y, 16):
                     hit, points, color = lander, S.LANDER_POINTS, (110, 255, 130)
@@ -234,6 +263,7 @@ class Game:
 
         # Enemy shots and enemy bodies vs the player.
         if player.alive and player.safe_timer <= 0:
+            # Shot boxes run a touch tight, body boxes a touch generous — feels fair.
             hit = False
             for shot in world.enemy_shots:
                 if abs(wrap_delta(shot.x, player.x)) < player.w / 2 - 4 and (
@@ -256,6 +286,7 @@ class Game:
                     self.to_screen(player.x), player.y, (230, 230, 255), big=True
                 )
                 self.sounds.play("big_boom")
+                # Sweep the bullets so nothing cheap hits the ship as it respawns.
                 world.enemy_shots.clear()
 
     # -- drawing --------------------------------------------------------------------
@@ -264,11 +295,13 @@ class Game:
         world = self.world
         assert world is not None
         points = []
+        # The mountains live in world space too: convert each vertex, keep the
+        # ones near the window.
         for i, h in enumerate(world.terrain):
             sx = self.to_screen(i * S.TERRAIN_STEP)
             if -S.TERRAIN_STEP <= sx <= S.WINDOW_W + S.TERRAIN_STEP:
                 points.append((sx, h))
-        points.sort()  # left to right across the screen
+        points.sort()  # left to right across the screen — the seam can emit them out of order
         if len(points) >= 2:
             pygame.draw.lines(self.screen, S.TERRAIN_COLOR, False, points, 2)
 
@@ -282,6 +315,8 @@ class Game:
 
         def plot(world_x: float, y: float, color: tuple[int, int, int], size: int) -> None:
             # The radar shows the whole wrapping world, centered on the ship.
+            # rel spans -0.5..0.5 around the player; scaling that to the box
+            # width pins your dot to the middle — to_screen in miniature.
             rel = wrap_delta(world_x, world.player.x) / S.WORLD_W  # -0.5 .. 0.5
             px = box.centerx + int(rel * (S.RADAR_W - 4))
             py = box.top + 2 + int(y / S.WINDOW_H * (S.RADAR_H - 6))
@@ -299,6 +334,8 @@ class Game:
         assert world is not None
         player = world.player
 
+        # Painter's order, back to front: terrain, enemies, ship, shots,
+        # particles, HUD. Whatever is drawn later covers what came before.
         self.draw_terrain()
 
         for lander in world.landers:
@@ -312,6 +349,7 @@ class Game:
                 img = self.sprites["baiter"][0]
                 self.screen.blit(img, img.get_rect(center=(int(sx), int(baiter.y))))
 
+        # A freshly respawned ship blinks: skip drawing it on the "off" beats.
         if player.alive and (player.safe_timer <= 0 or blink_on(self.scene_time, hz=6)):
             sx = self.to_screen(player.x)
             ship = self.sprites["ship"][0 if player.facing == 1 else 1]
@@ -326,6 +364,7 @@ class Game:
                     fr = flame.get_rect(midleft=(rect.right - 2, rect.centery))
                 self.screen.blit(flame, fr)
 
+        # Lasers are pure lines, not sprites: bright tip at sx, tail trailing behind.
         for laser in world.lasers:
             sx = self.to_screen(laser.x)
             tail = sx - laser.direction * S.LASER_LENGTH
@@ -400,14 +439,19 @@ class Game:
     # -- the loop ----------------------------------------------------------------------
 
     def pressed(self, key: int) -> bool:
+        """True if this key went DOWN this frame — one-shot, unlike get_pressed()."""
         return key in self._pressed_keys
 
     def run(self) -> int:
         running = True
         while running:
+            # dt = seconds since last frame; multiply every speed by it. The min()
+            # clamp turns a long stall (a dragged window, say) into one small step.
             dt = min(self.clock.tick(S.FPS) / 1000, 0.05)
             self.scene_time += dt
 
+            # Input: collect the keys that went down THIS frame for one-shot
+            # actions; held movement keys are read with key.get_pressed() later.
             self._pressed_keys = set()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -419,6 +463,7 @@ class Game:
 
             self.stars.update(dt)  # STARFIELD: twinkle (and title drift)
 
+            # Update: only the active scene thinks.
             if self.scene == TITLE:
                 self.update_title(dt)
             elif self.scene == PLAYING:
@@ -426,6 +471,7 @@ class Game:
             else:
                 self.update_game_over(dt)
 
+            # Draw, back to front: the sky first, then the scene paints over it.
             self.stars.draw(self.screen)  # STARFIELD: always the bottom layer
             if self.scene == TITLE:
                 self.draw_title()

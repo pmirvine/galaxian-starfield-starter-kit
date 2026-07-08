@@ -9,6 +9,9 @@ and build this yourself; come back here whenever you want to peek at the
 answer key. The section numbers below match the tutorial's steps.
 
 Controls: arrows move, SPACE fires, SPACE restarts after game over.
+
+Every dial worth turning is marked with a ``TWEAK`` comment. Change a
+number, rerun, feel the difference — that loop is game development.
 """
 
 from __future__ import annotations
@@ -50,11 +53,11 @@ COLORS = {"W": (230, 230, 255), "G": (110, 255, 130), "g": (110, 255, 130)}
 
 # --- Step 5: invader grid layout ------------------------------------------------
 
-COLS, ROWS = 8, 4
+COLS, ROWS = 8, 4  # TWEAK: the size of the wave — try 10 x 5 for a serious fight
 GRID_X, GRID_Y = 80, 60  # top-left of the formation
 SPACING_X, SPACING_Y = 58, 44
-STEP_SIZE = 12  # pixels sideways per march step
-DROP_SIZE = 18  # pixels downward when the edge is reached
+STEP_SIZE = 12  # TWEAK: pixels sideways per march step — bigger strides feel more aggressive
+DROP_SIZE = 18  # TWEAK: pixels downward at the edge — higher and they reach you sooner
 
 
 def new_invaders() -> list[pygame.Rect]:
@@ -74,6 +77,7 @@ def main() -> int:
 
     # --- Step 2: the starfield — static (velocity zero), quietly twinkling,
     # with 3-pixel stars to match the 3x scale the sprites are drawn at.
+    # TWEAK: try velocity=(0, 25) and the sky drifts like Galaxian's.
     stars = Starfield((WIDTH, HEIGHT), velocity=(0, 0), twinkle_speed=0.7, star_size=3, seed=7)
 
     player_img = sprite(PLAYER_ART, COLORS, scale=3)
@@ -86,7 +90,7 @@ def main() -> int:
 
     invaders, shots, bombs, score = reset()
     player = player_img.get_rect(midbottom=(WIDTH // 2, HEIGHT - 16))
-    lives = 3
+    lives = 3  # TWEAK: starting lives — 1 for arcade cruelty, 5 for a gentle evening
     game_over = False
     march_dir = 1  # 1 = marching right, -1 = left
     march_timer = 0.0
@@ -111,11 +115,15 @@ def main() -> int:
 
         if not game_over:
             # --- Step 3: move the player.
+            # TWEAK: 300 is the ship's speed in px/sec — try 400 for a nimbler ship.
             keys = pygame.key.get_pressed()
             player.x += int((keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * 300 * dt)
             player.clamp_ip(screen.get_rect())
 
             # --- Step 4: fire (up to three of our shots in the air at once).
+            # TWEAK: the 3 caps how many of your shots may be alive at once — lower
+            # it for discipline, raise it for a bullet hose. The 700 below is their
+            # speed in px/sec.
             if fired and len(shots) < 3:
                 shots.append(pygame.Rect(player.centerx - 2, player.top - 12, 4, 12))
                 sounds.play("laser")
@@ -127,6 +135,8 @@ def main() -> int:
             # their numbers shrink (the classic Space Invaders heartbeat).
             march_timer -= dt
             if march_timer <= 0 and invaders:
+                # TWEAK: lower 0.06 (the top speed) or 0.5 (the starting pace)
+                # and the invaders march faster.
                 march_timer = 0.06 + 0.5 * len(invaders) / (COLS * ROWS)
                 at_edge = any(
                     (r.right + STEP_SIZE * march_dir > WIDTH - 10)
@@ -143,10 +153,12 @@ def main() -> int:
                 sounds.play(f"march{march_note}")
                 march_note = (march_note + 1) % 4
                 # An invader may drop a bomb on each step.
+                # TWEAK: 0.4 is the bomb chance per step — raise it for a meaner wave.
                 if random.random() < 0.4:
                     shooter = random.choice(invaders)
                     bombs.append(pygame.Rect(shooter.centerx - 2, shooter.bottom, 4, 10))
 
+            # TWEAK: 260 is bomb fall speed in px/sec — faster bombs are scarier.
             for bomb in bombs:
                 bomb.y += int(260 * dt)
             bombs = [b for b in bombs if b.top < HEIGHT]

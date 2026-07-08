@@ -8,7 +8,10 @@ games and a from-scratch beginner tutorial** showing how to use it.
 
 Built for novice game developers: every sprite is ASCII art in the source,
 every sound is synthesized in ~30 lines you can read, and every game is
-small enough to understand in one sitting.
+small enough to understand in one sitting. Every number worth playing
+with is marked with a `# TWEAK:` comment right in the code — invader
+speed, bullet caps, gravity, difficulty ramps — so
+`grep -rn "TWEAK" src/` is a menu of experiments.
 
 ## Quick start
 

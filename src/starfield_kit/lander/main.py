@@ -17,6 +17,13 @@ Two things this demo shows:
     frame; the engine subtracts from it while fuel lasts; nothing else.
     The whole game is those two accelerations plus a landing test — and
     the instrument panel that turns red when your numbers would kill you.
+
+Along the way you get the classic physics chain (acceleration changes
+velocity, velocity changes position, everything scaled by ``dt``),
+procedural terrain (a random walk of heights with flat pads carved in),
+and win/lose rules that are just two speed checks. Every dial worth
+turning is marked with a ``TWEAK`` comment — grep for it, then start
+with GRAVITY, FUEL_START, and the SAFE_ limits.
 """
 
 from __future__ import annotations
@@ -33,20 +40,29 @@ from ..starfield import Starfield
 
 WIDTH, HEIGHT = 800, 500
 
-GRAVITY = 55.0  # px/s^2, ever downward
-MAIN_THRUST = 130.0  # px/s^2 upward while burning
+# --- the dials: gravity, engines, fuel, lives ---------------------------------
+GRAVITY = 55.0  # TWEAK: px/s^2, ever downward — lower for a moon, higher for a brute
+MAIN_THRUST = 130.0  # TWEAK: px/s^2 upward while burning — must beat GRAVITY or you only sink
+# TWEAK: sideways push in px/s^2 — higher makes drift easier to catch and to cause.
 SIDE_THRUST = 70.0
+# TWEAK: units of fuel at launch — the single biggest difficulty dial (lower = harder).
 FUEL_START = 400.0
-FUEL_MAIN_BURN = 22.0  # per second
+FUEL_MAIN_BURN = 22.0  # TWEAK: fuel units per second while the main engine burns
+# TWEAK: fuel units per second while nudging sideways.
 FUEL_SIDE_BURN = 8.0
-SAFE_VY = 45.0  # touch down harder than this and you are a crater
+SAFE_VY = 45.0  # TWEAK: max survivable fall in px/s — touch down harder and you are a crater
+# TWEAK: max sideways drift in px/s at touchdown — raise both SAFE_ limits to forgive.
 SAFE_VX = 25.0
+# TWEAK: how many landers you get per game.
 START_SHIPS = 3
 
-TERRAIN_STEP = 20  # px between terrain vertices
+TERRAIN_STEP = 20  # TWEAK: px between terrain vertices — smaller = craggier, busier ground
 # Three pads: (width in terrain segments, score multiplier) — narrow pays.
+# TWEAK: widen a pad or add a fourth — wider targets are far easier to hit.
 PADS = [(5, 1), (4, 2), (2, 4)]
 
+# --- pixel art (one character per pixel; "." is transparent) ------------------
+# Edit these strings to redraw the ship — each letter looks up a color below.
 LANDER_ART = [
     "...WWW...",
     "..WWWWW..",
@@ -77,6 +93,7 @@ def make_sky() -> pygame.Surface:
     computed once. The starfield draws OVER this (background=None)."""
     sky = pygame.Surface((WIDTH, HEIGHT))
     top, bottom = (4, 4, 16), (52, 24, 58)
+    # Blend top -> bottom one 1px row at a time; t runs 0..1 down the screen.
     for y in range(HEIGHT):
         t = y / HEIGHT
         color = tuple(int(a + (b - a) * t) for a, b in zip(top, bottom, strict=True))
@@ -89,6 +106,9 @@ def make_terrain(rng: random.Random) -> tuple[list[int], list[tuple[int, int, in
     heights has one entry per TERRAIN_STEP and each pad is (i0, i1, mult)."""
     n = WIDTH // TERRAIN_STEP + 1
     heights = [0] * n
+    # Heights are y pixels from the TOP of the window, so bigger = lower ground.
+    # A random walk: wander up or down a little each step, kept to a sane band.
+    # TWEAK: the +/-22 is roughness in px per step — widen it for wilder mountains.
     h = rng.randint(360, 450)
     for i in range(n):
         h += rng.randint(-22, 22)
@@ -105,6 +125,8 @@ def make_terrain(rng: random.Random) -> tuple[list[int], list[tuple[int, int, in
 
 
 class Game:
+    """The whole game in one object: window, ship state, terrain, frame loop."""
+
     def __init__(self) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -112,6 +134,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.sounds = SoundBank()
         self.rng = random.Random()
+        # Build the sprites once at startup; scale=3 turns each art pixel into 3x3.
         self.ship_img = sprite(LANDER_ART, COLORS, scale=3)
         self.flame_img = sprite(FLAME_ART, COLORS, scale=3)
         self.sky = make_sky()
@@ -126,15 +149,19 @@ class Game:
             count=70,
             twinkle_speed=0.3,
             star_size=2,
+            # A fixed seed = the same sky every run; change it for a new one.
             seed=1969,
         )
 
         self.time = 0.0
         self.paused = False
+        # Keys that went down THIS frame — for one-shot actions like pause.
+        # (Held keys are read separately with pygame.key.get_pressed().)
         self._pressed: set[int] = set()
         self.new_game()
 
     def new_game(self) -> None:
+        """Fresh game: reset score, ships and fuel, and roll new terrain."""
         self.score = 0
         self.ships = START_SHIPS
         self.fuel = FUEL_START
@@ -146,14 +173,17 @@ class Game:
         self.reset_ship()
 
     def reset_ship(self) -> None:
+        """Begin a new approach: back near the top-left, engines cold."""
         self.x, self.y = WIDTH * 0.15, 60.0
-        self.vx, self.vy = 42.0, 0.0  # you always arrive drifting
+        self.vx, self.vy = 42.0, 0.0  # TWEAK: you always arrive drifting — the drift, in px/s
         self.burning = False
         self.landed = False
         self.dead_timer = 0.0
 
     def ground_at(self, x: float) -> float:
         """Terrain height under x, linearly interpolated between vertices."""
+        # Find the segment x is over, then slide between its two endpoint
+        # heights — t says how far across the segment we are (0 to 1).
         i = int(x // TERRAIN_STEP)
         i = max(0, min(len(self.terrain) - 2, i))
         t = (x - i * TERRAIN_STEP) / TERRAIN_STEP
@@ -161,6 +191,7 @@ class Game:
 
     def pad_under(self, x: float) -> int:
         """Score multiplier of the pad below x, or 0 if that's bare rock."""
+        # The whole ship must fit — both edges of the sprite inside the pad.
         half = self.ship_img.get_width() / 2
         for i0, i1, mult in self.pads:
             if i0 * TERRAIN_STEP <= x - half and x + half <= i1 * TERRAIN_STEP:
@@ -168,6 +199,7 @@ class Game:
         return 0
 
     def update(self, dt: float) -> None:
+        """One tick of game logic: timers, physics, and the landing test."""
         if pygame.K_p in self._pressed:
             self.paused = not self.paused
         if self.paused or self.game_over:
@@ -189,19 +221,24 @@ class Game:
         if self.landed:  # celebrate, then a fresh approach
             if self.message_timer <= 0:
                 self.terrain, self.pads = make_terrain(self.rng)
+                # TWEAK: fuel units won back per landing, capped at a full tank.
                 self.fuel = min(FUEL_START, self.fuel + 250)  # partial refuel
                 self.reset_ship()
             return
 
+        # get_pressed() reads keys HELD right now — perfect for continuous thrust.
         keys = pygame.key.get_pressed()
         # The physics. Gravity always; engines only while there is fuel.
+        # Accelerations change velocity here; velocity moves the ship below.
         self.vy += GRAVITY * dt
         self.burning = False
         if self.fuel > 0:
             if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
+                # Cancel gravity, then push: net lift while burning is MAIN_THRUST.
                 self.vy -= (GRAVITY + MAIN_THRUST) * dt
                 self.fuel -= FUEL_MAIN_BURN * dt
                 self.burning = True
+            # True/False count as 1/0, so this is -1, 0 or +1 with no ifs.
             side = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
             if side:
                 self.vx += side * SIDE_THRUST * dt
@@ -211,8 +248,11 @@ class Game:
             self.sounds.loop("thrust")
         else:
             self.sounds.stop("thrust")
+        # Velocity moves the ship. There is no terminal velocity — clamp
+        # self.vy right here if you want to cap how fast the lander falls.
         self.x += self.vx * dt
         self.y += self.vy * dt
+        # Keep the ship on screen; swap this clamp for wraparound if you like.
         self.x = max(15.0, min(WIDTH - 15.0, self.x))
 
         # Touchdown or impact?
@@ -220,8 +260,10 @@ class Game:
         if bottom >= self.ground_at(self.x):
             self.sounds.stop("thrust")
             mult = self.pad_under(self.x)
+            # Surviving needs all three: a pad underneath, gentle drift, gentle fall.
             if mult and abs(self.vx) <= SAFE_VX and self.vy <= SAFE_VY:
                 self.landed = True
+                # Narrow pads pay more, and leftover fuel is worth points too.
                 bonus = 50 * mult + int(self.fuel / 4)
                 self.score += bonus
                 self.message = f"THE EAGLE HAS LANDED  +{bonus}"
@@ -229,6 +271,7 @@ class Game:
                 self.sounds.play("fanfare")
             else:
                 self.ships -= 1
+                # Seconds of smoldering wreckage before the next ship (or game over).
                 self.dead_timer = 2.0
                 self.message = "CRASHED" if mult == 0 else "TOO FAST"
                 self.message_timer = 2.0
@@ -238,6 +281,8 @@ class Game:
     # -- drawing -------------------------------------------------------------
 
     def draw_terrain(self) -> None:
+        # One (x, y) point per vertex: the polygon is the dark fill down to the
+        # bottom edge, then lines() retraces the ridge as a bright outline.
         points = [(i * TERRAIN_STEP, h) for i, h in enumerate(self.terrain)]
         pygame.draw.polygon(self.screen, (26, 26, 38), [*points, (WIDTH, HEIGHT), (0, HEIGHT)])
         pygame.draw.lines(self.screen, (150, 160, 190), False, points, 2)
@@ -255,6 +300,7 @@ class Game:
 
     def draw_instruments(self) -> None:
         altitude = max(0, int(self.ground_at(self.x) - self.y - self.ship_img.get_height() / 2))
+        # Each gauge goes red the moment that reading would wreck a landing.
         rows = [
             ("ALTITUDE", f"{altitude:4d}", (230, 230, 255)),
             ("H-SPEED", f"{self.vx:+5.0f}", self.gauge_color(abs(self.vx), SAFE_VX)),
@@ -272,6 +318,7 @@ class Game:
         return (120, 255, 160) if value <= limit else (255, 80, 80)
 
     def draw(self) -> None:
+        # Painter's algorithm: draw back to front — sky, stars, terrain, ship, HUD.
         self.screen.blit(self.sky, (0, 0))  # our own background art first...
         self.stars.draw(self.screen)  # STARFIELD: ...then stars over it
         self.draw_terrain()
@@ -285,6 +332,7 @@ class Game:
         for p in self.particles:
             self.screen.fill(p.color, (int(p.x), int(p.y), 3, 3))
 
+        # The HUD draws last so nothing in the world can cover it.
         draw_text(self.screen, f"SCORE {self.score:05d}", (12, 10))
         draw_text(self.screen, f"SHIPS {max(0, self.ships)}", (12, 34), color=(110, 110, 140))
         self.draw_instruments()
@@ -315,9 +363,13 @@ class Game:
     def run(self) -> int:
         running = True
         while running:
+            # dt = seconds since last frame; multiply every speed by it. tick(60)
+            # aims for 60 fps, and the min() stops a long hiccup (say, dragging
+            # the window) from making the physics leap through the floor.
             dt = min(self.clock.tick(60) / 1000, 0.05)
             self.time += dt
 
+            # Handle input: gather the keys freshly pressed this frame.
             self._pressed = set()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -330,8 +382,10 @@ class Game:
             if self.game_over and pygame.K_SPACE in self._pressed:
                 self.new_game()
 
+            # Update the world — physics, collisions and timers live in update().
             self.stars.update(dt)  # STARFIELD: just the twinkle here
             self.update(dt)
+            # Draw everything back to front, then flip() shows the finished frame.
             self.draw()
             pygame.display.flip()
 

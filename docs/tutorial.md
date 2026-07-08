@@ -396,7 +396,8 @@ Some things worth noticing about what you built:
   `src/starfield_kit/galaxians/entities.py` grows them naturally.
 * **Everything is tunable.** Bomb speed, march step, shot limit, twinkle.
   Change numbers, rerun, feel the difference. That loop — tweak, run,
-  feel — is game development.
+  feel — is game development. Every sample in the kit marks its dials with
+  a `# TWEAK:` comment — `grep -rn "TWEAK" src/` lists them all.
 
 ## Where to go next
 

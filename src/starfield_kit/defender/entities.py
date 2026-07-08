@@ -5,6 +5,11 @@ The world is a loop WORLD_W pixels around. The one tricky idea in this
 file is ``wrap_delta(a, b)``: the shortest signed distance from b to a
 around that loop. Every "which way is the player?" question uses it, so
 enemies correctly chase you across the seam of the world.
+
+The cast: Player (your inertial ship), Laser and EnemyShot (the
+projectiles), Lander and Baiter (the enemies), and World — a dataclass bag
+holding everything alive in the current wave. Terrain comes from
+make_terrain(). Every number in here is a settings.py dial (imported as S).
 """
 
 from __future__ import annotations
@@ -22,7 +27,10 @@ from . import settings as S
 def wrap_delta(a: float, b: float) -> float:
     """Shortest signed distance from b to a in the wrapping world:
     positive means a is to the right of b (going the short way)."""
+    # Example with WORLD_W = 3200: wrap_delta(100, 3100) is +200 — the short
+    # hop rightward across the seam, not the 3000-pixel trek back around.
     d = (a - b) % S.WORLD_W
+    # If the rightward distance is over half the loop, leftward is shorter.
     if d > S.WORLD_W / 2:
         d -= S.WORLD_W
     return d
@@ -69,6 +77,7 @@ class Player:
         self.safe_timer = max(0.0, self.safe_timer - dt)
         self.fire_cooldown = max(0.0, self.fire_cooldown - dt)
 
+        # True minus False is -1, 0 or 1 — both keys handled in one subtraction.
         direction = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
         self.thrusting = direction != 0
         if direction:
@@ -77,10 +86,12 @@ class Player:
         else:
             self.vx -= self.vx * min(1.0, S.DRAG * dt)  # coast down gently
         self.vx = max(-S.MAX_SPEED, min(S.MAX_SPEED, self.vx))
+        # The %-wrap: fly off one end of the loop and reappear at the other.
         self.x = (self.x + self.vx * dt) % S.WORLD_W
 
         dy = keys[pygame.K_DOWN] - keys[pygame.K_UP]
         self.y += dy * S.VERTICAL_SPEED * dt
+        # Vertical movement doesn't wrap — just clamp to the window, minus a margin.
         self.y = max(40.0, min(S.WINDOW_H - 40.0, self.y))
 
     def explode(self) -> None:
@@ -117,6 +128,7 @@ class Laser:
 
     @property
     def gone(self) -> bool:
+        # TWEAK: bolts die after 0.8 screens of travel — raise for a longer reach.
         return self.traveled > S.WINDOW_W * 0.8
 
     def hits(self, x: float, y: float, radius: float) -> bool:
@@ -128,6 +140,8 @@ class Laser:
 
 @dataclass
 class EnemyShot:
+    """A dumb bullet: constant velocity, wraps like everything else, times out."""
+
     x: float
     y: float
     vx: float
@@ -149,24 +163,30 @@ class Lander:
 
     def __init__(self, rng: random.Random) -> None:
         self.x = rng.uniform(0, S.WORLD_W)
+        # Each lander bobs around its own base height, with its own phase.
         self.base_y = rng.uniform(70, S.WINDOW_H - 160)
         self.y = self.base_y
         self.phase = rng.uniform(0, math.tau)
         self.time = 0.0
+        # TWEAK: each cruises at 80%..130% of LANDER_SPEED — a raggedy, natural flock.
         self.speed = S.LANDER_SPEED * rng.uniform(0.8, 1.3)
 
     def update(self, dt: float, player_x: float, rng: random.Random) -> EnemyShot | None:
         self.time += dt
         toward = wrap_delta(player_x, self.x)
+        # copysign: move at full speed, with the direction (sign) taken from toward.
         self.x = (self.x + math.copysign(self.speed, toward) * dt) % S.WORLD_W
         self.y = self.base_y + S.LANDER_BOB * math.sin(self.time * 1.4 + self.phase)
         # Take a potshot now and then, but only from within about a screen.
+        # (chance * dt keeps "shots per second" true at any frame rate)
         if abs(toward) < S.WINDOW_W and rng.random() < S.LANDER_FIRE_CHANCE * dt:
             return self.shot_at(player_x, rng)
         return None
 
     def shot_at(self, player_x: float, rng: random.Random) -> EnemyShot:
         """A shot loosely aimed at the player (enemy aim is charitably bad)."""
+        # atan2 turns "how far over, how far up" into an angle; cos/sin below turn
+        # it back into a velocity. The rng fuzz is what keeps the aim merciful.
         angle = math.atan2(
             rng.uniform(-40, 40) - (self.y - S.WINDOW_H * 0.5),
             wrap_delta(player_x, self.x),
@@ -191,10 +211,13 @@ class Baiter:
         self, dt: float, player_x: float, player_y: float, rng: random.Random
     ) -> EnemyShot | None:
         toward = wrap_delta(player_x, self.x)
+        # Proportional chase: push harder the farther you are, capped at BAITER_SPEED.
         chase = max(-S.BAITER_SPEED, min(S.BAITER_SPEED, toward * 1.5))
         self.x = (self.x + chase * dt) % S.WORLD_W
+        # Vertical homing too, capped so a nimble ship can still slip past.
         self.y += max(-140.0, min(140.0, (player_y - self.y) * 1.2)) * dt
         if abs(toward) < S.WINDOW_W and rng.random() < S.BAITER_FIRE_CHANCE * dt:
+            # Unlike landers, baiters aim true: a unit direction times bolt speed.
             dx, dy = wrap_delta(player_x, self.x), player_y - self.y
             dist = math.hypot(dx, dy) or 1.0
             speed = S.ENEMY_SHOT_SPEED * 1.3
@@ -213,5 +236,6 @@ class World:
     lasers: list[Laser] = field(default_factory=list)
     enemy_shots: list[EnemyShot] = field(default_factory=list)
     particles: list[Particle] = field(default_factory=list)
+    # main.py advances wave_time; each time it passes next_baiter, one more spawns.
     wave_time: float = 0.0
     next_baiter: float = S.BAITER_AFTER

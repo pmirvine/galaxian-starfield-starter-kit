@@ -38,6 +38,9 @@ from ..starfield import Starfield
 from . import sprites
 
 # --- the 1979 numbers ---------------------------------------------------------
+# (These are measurements of a real machine, not suggestions — change one and it
+# simply stops being 1979. For numbers that WANT changing, see the playable
+# sample's settings.py next door, where every dial is marked TWEAK.)
 
 NATIVE_W, NATIVE_H = 224, 256  # the rotated arcade monitor, in native pixels
 SCALE = 3  # one native pixel = a 3x3 block here
@@ -121,6 +124,8 @@ def main() -> int:
         # Ticking at the cabinet's own 60.606 Hz is a nicety, not a need:
         # the starfield is dt-based, so any frame rate scrolls correctly.
         dt = clock.tick(ARCADE_FPS) / 1000
+        # Turning the tableau into a game starts right here: read the keyboard in
+        # this event loop and move the ship — docs/tutorial.md Step 3 shows how.
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (
                 event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_q)

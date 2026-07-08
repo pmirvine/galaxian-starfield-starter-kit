@@ -14,6 +14,10 @@ The file reads top to bottom as three layers:
 
 The starfield usage is exactly three lines (marked with ``# STARFIELD``):
 create it once, ``update(dt)`` every frame, ``draw(screen)`` first.
+
+The moving parts live in entities.py, the pixel art in sprites.py, and
+every tunable number in settings.py — imported as ``S``, so when you see
+``S.DIVE_SPEED`` below, that's the file to open to make the game yours.
 """
 
 from __future__ import annotations
@@ -30,10 +34,14 @@ from . import settings as S
 from . import sprites
 from .entities import DIVING, Convoy, Player, Shot, World
 
+# The scene names. self.scene holds one of these and run() picks the matching
+# update_*/draw_* pair each frame — a state machine in its simplest clothes.
 TITLE, PLAYING, GAME_OVER = "title", "playing", "game over"
 
 
 class Game:
+    """Owns the window, the scenes, and the loop that runs them."""
+
     def __init__(self) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode((S.WINDOW_W, S.WINDOW_H))
@@ -54,6 +62,8 @@ class Game:
             seed=S.STAR_SEED,
         )
 
+        # Scene bookkeeping. self.world (the live wave) stays None until a
+        # game starts — the title screen has no aliens to run.
         self.scene = TITLE
         self.scene_time = 0.0
         self.hiscore = 0
@@ -78,11 +88,13 @@ class Game:
         self.scene_time = 0.0
 
     def start_wave(self) -> None:
+        """A fresh World for the current wave: new player, new convoy."""
         player_size = self.sprites["player"][0].get_size()
         self.world = World(Player(player_size), Convoy(self.wave, self.rng))
         self.wave_clear_timer = 0.0
 
     def add_score(self, points: int) -> None:
+        """Bank points and hand out the single extra ship at S.EXTRA_LIFE_AT."""
         self.score += points
         self.hiscore = max(self.hiscore, self.score)
         if not self.extra_life_given and self.score >= S.EXTRA_LIFE_AT:
@@ -101,6 +113,7 @@ class Game:
         assert world is not None
         player, convoy = world.player, world.convoy
 
+        # Pause gate: flip on P, and while paused skip all movement below.
         if self.pressed(pygame.K_p):
             self.paused = not self.paused
         if self.paused:
@@ -109,11 +122,13 @@ class Game:
         # The player: move, shoot, respawn.
         player.update(dt, pygame.key.get_pressed())
         if player.alive:
+            # The bullet cap: only S.PLAYER_MAX_SHOTS in the air — tweak it in settings.py.
             if self.pressed(pygame.K_SPACE) and len(world.player_shots) < S.PLAYER_MAX_SHOTS:
                 world.player_shots.append(
                     Shot(player.x, player.y - player.h / 2, 0, -S.PLAYER_SHOT_SPEED)
                 )
                 self.sounds.play("laser")
+        # Death pause over: bring the ship back, or end the game if no lives remain.
         elif player.respawn_timer <= 0:
             if self.lives > 0:
                 player.respawn()
@@ -123,7 +138,7 @@ class Game:
                 self.sounds.play("game_over")
                 return
 
-        # The convoy: sway, dive, shoot back.
+        # The convoy: sway, dive, shoot back (its update returns any new shots).
         world.enemy_shots.extend(convoy.update(dt, player.x, player.alive))
         if convoy.just_launched:
             self.sounds.play("dive")
@@ -132,6 +147,7 @@ class Game:
         for group in (world.player_shots, world.enemy_shots, world.particles):
             for thing in group:
                 thing.update(dt)
+        # (Rebuilding each list is the tidy way to drop items while looping.)
         world.player_shots = [s for s in world.player_shots if not s.gone]
         world.enemy_shots = [s for s in world.enemy_shots if not s.gone]
         world.particles = [p for p in world.particles if not p.gone]
@@ -140,6 +156,7 @@ class Game:
 
         # Wave cleared: short pause, then a faster convoy.
         if convoy.defeated:
+            # The timer doubles as a flag: 0.0 means the pause hasn't started yet.
             if self.wave_clear_timer == 0.0:
                 self.wave_clear_timer = S.WAVE_CLEAR_PAUSE
                 self.sounds.play("fanfare")
@@ -149,16 +166,19 @@ class Game:
                 self.start_wave()
 
     def update_game_over(self, dt: float) -> None:
+        # Wait a beat so a leftover SPACE press can't skip this screen instantly.
         if self.scene_time > 1.0 and self.pressed(pygame.K_SPACE):
             self.scene = TITLE
             self.scene_time = 0.0
 
     def check_collisions(self) -> None:
+        """Everything is rectangles: shots vs aliens, then threats vs the player."""
         world = self.world
         assert world is not None
         player, convoy = world.player, world.convoy
 
         # Player shots vs aliens.
+        # (list(...) is a copy, so removing from the real list mid-loop is safe.)
         for shot in list(world.player_shots):
             hit = None
             for alien in convoy.aliens:
@@ -175,6 +195,7 @@ class Game:
                 self.sounds.play("boom")
 
         # Enemy shots and diving aliens vs the player.
+        # safe_timer > 0 is the respawn grace period: blinking and untouchable.
         if player.alive and player.safe_timer <= 0:
             died = any(s.rect.colliderect(player.rect) for s in world.enemy_shots)
             for alien in [a for a in convoy.aliens if a.state == DIVING]:
@@ -188,6 +209,7 @@ class Game:
                 player.explode()
                 world.particles += explosion(player.x, player.y, (230, 230, 255), big=True)
                 self.sounds.play("big_boom")
+                # Clear the sky so you don't respawn into the volley that killed you.
                 world.enemy_shots.clear()
 
     # -- drawing -----------------------------------------------------------------
@@ -226,6 +248,7 @@ class Game:
             y = 260 + i * 56
             self.screen.blit(frame, frame.get_rect(center=(cx - 50, y)))
             draw_text(self.screen, f"{points} PTS", (cx - 10, y), anchor="midleft")
+        # blink_on flips True/False on a beat — the classic attract-mode flash.
         if blink_on(self.scene_time):
             draw_text(
                 self.screen,
@@ -246,6 +269,8 @@ class Game:
     def draw_playing(self) -> None:
         world = self.world
         assert world is not None
+        # Painter's order: later draws sit on top — aliens, then player, bullets,
+        # sparks, and the HUD last (the starfield already went down in run()).
         # Wing-flap animation: all aliens share a global 2-frame beat.
         frame_i = int(world.convoy.time * S.FLAP_RATE) % 2
         for alien in world.convoy.aliens:
@@ -253,10 +278,12 @@ class Game:
             self.screen.blit(frame, frame.get_rect(center=(int(alien.x), int(alien.y))))
 
         player = world.player
+        # During respawn grace the ship blinks: draw it only on the "on" beats.
         if player.alive and (player.safe_timer <= 0 or blink_on(self.scene_time, hz=6)):
             sprite = self.sprites["player"][0]
             self.screen.blit(sprite, sprite.get_rect(center=(int(player.x), int(player.y))))
 
+        # Bullets and sparks are bare filled rectangles — no sprite needed at this size.
         for shot in world.player_shots:
             self.screen.fill((255, 255, 255), (int(shot.x) - 1, int(shot.y) - 6, 3, 12))
         for shot in world.enemy_shots:
@@ -302,11 +329,15 @@ class Game:
         return key in self._pressed_keys
 
     def run(self) -> int:
+        """The heartbeat: events, then update, then draw — S.FPS times a second."""
         running = True
         while running:
+            # dt = seconds since last frame; multiply every speed by it.
             dt = min(self.clock.tick(S.FPS) / 1000, 0.05)  # cap dt: no warp after a hiccup
             self.scene_time += dt
 
+            # Input: collect this frame's fresh key presses (held keys are read
+            # straight off the keyboard in update_playing).
             self._pressed_keys = set()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -319,6 +350,7 @@ class Game:
             # STARFIELD: animate it even on menus — the sky never stops.
             self.stars.update(dt)
 
+            # Run whichever scene is on stage: update first, then draw further down.
             if self.scene == TITLE:
                 self.update_title(dt)
             elif self.scene == PLAYING:
@@ -335,6 +367,7 @@ class Game:
             else:
                 self.draw_game_over()
 
+            # One flip per frame shows everything drawn above at once.
             pygame.display.flip()
 
         pygame.quit()

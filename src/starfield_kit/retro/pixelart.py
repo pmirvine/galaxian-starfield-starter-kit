@@ -16,6 +16,10 @@ source code:
 
 '.' (or a space) means transparent. ``scale`` blows each character up into
 an NxN block of pixels, which is what gives the chunky arcade look.
+
+Each game keeps its grids in its own package, so editing a game's art only
+changes that game — the safest, most fun place to experiment. This module
+itself is shared by every sample.
 """
 
 from __future__ import annotations
@@ -29,8 +33,10 @@ Color = tuple[int, int, int]
 
 def sprite(rows: Sequence[str], colors: dict[str, Color], scale: int = 1) -> pygame.Surface:
     """Build a Surface from ASCII art. See the module docstring for the format."""
-    width = max(len(row) for row in rows)
+    width = max(len(row) for row in rows)  # rows may differ in length; size to the longest
+    # One Surface pixel per character; SRCALPHA makes the untouched pixels transparent.
     surf = pygame.Surface((width, len(rows)), pygame.SRCALPHA)
+    # y walks the rows (top to bottom), x the characters — a 1:1 grid-to-pixel map.
     for y, row in enumerate(rows):
         for x, char in enumerate(row):
             if char in (".", " "):
@@ -38,6 +44,8 @@ def sprite(rows: Sequence[str], colors: dict[str, Color], scale: int = 1) -> pyg
             try:
                 surf.set_at((x, y), colors[char])
             except KeyError:
+                # An unlisted character is almost always a typo — fail with a message
+                # that names the row, instead of a bare KeyError from nowhere.
                 raise ValueError(
                     f"sprite row {y} uses {char!r} but colors has no entry for it"
                 ) from None

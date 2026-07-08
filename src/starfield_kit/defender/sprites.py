@@ -1,5 +1,13 @@
 """The Defender cast as ASCII pixel art.
 
+Each string below is one row of pixels; each character picks a color from
+LEGEND, and "." means transparent. ``sprite()`` from retro/pixelart.py
+turns a grid into a pygame Surface, every character blown up into a
+chunky PIXEL_SCALE block — no image files, just art you can edit in any
+text editor. To restyle the game, edit the strings. To add a sprite, draw
+a new grid, give any new letters a color in LEGEND, and build it in
+``load()``.
+
 The ship faces right in the art; `load()` also builds a mirrored copy so
 it can face left. The flame frames flicker behind the ship's tail while
 thrusting.
@@ -11,6 +19,7 @@ import pygame
 
 from ..retro.pixelart import flipped, sprite
 
+# The palette. Add a color here, then give it a letter in LEGEND to paint with it.
 WHITE = (230, 230, 255)
 GREY = (150, 160, 190)
 RED = (255, 70, 70)
@@ -65,6 +74,7 @@ BAITER = [
     ".r..r..r..r.",
 ]
 
+# Character -> color for every grid above. An unlisted letter is an error, on purpose.
 LEGEND = {
     "W": WHITE,
     "G": GREY,
